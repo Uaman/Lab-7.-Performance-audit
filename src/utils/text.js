@@ -7,12 +7,31 @@ export function normalizeText(value) {
     .trim();
 }
 
+const haystackCache = new WeakMap();
+
+function getTutorHaystack(tutor) {
+  let text = haystackCache.get(tutor);
+  if (!text) {
+    text = normalizeText([tutor.name, tutor.city, tutor.subjects.join(' '), tutor.bio].join(' '));
+    haystackCache.set(tutor, text);
+  }
+  return text;
+}
+
+let lastQuery = null;
+let lastWords = [];
+function getQueryWords(query) {
+  if (query === lastQuery) return lastWords;
+  lastQuery = query;
+  lastWords = normalizeText(query).split(/\s+/).filter(Boolean);
+  return lastWords;
+}
+
+
 export function matchesQuery(tutor, query) {
   if (!query) return true;
-  const haystack = normalizeText(
-    [tutor.name, tutor.city, tutor.subjects.join(' '), tutor.bio].join(' ')
-  );
-  return normalizeText(query)
-    .split(/\s+/)
-    .every((word) => haystack.includes(word));
+  const words = getQueryWords(query);
+  if (words.length === 0) return true;
+  const haystack = getTutorHaystack(tutor);
+  return words.every((word) => haystack.includes(word));
 }
