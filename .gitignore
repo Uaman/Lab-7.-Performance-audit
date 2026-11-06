@@ -4,4 +4,4 @@ dist
 .DS_Store
 .vite
 coverage
-report/
+report/*.json
