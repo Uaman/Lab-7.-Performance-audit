@@ -40,9 +40,9 @@
 `report/baseline/load/`,
 `report/baseline/load/lighthouse/`
 - Логи: `report/baseline/load/run-1.json`, `run-2.json`, `run-3.json`, `lighthouse/`
-![Baseline Load](report/baseline/load/baseline-load-1.png)
-![Lighthouse Baseline](report/baseline/load/lighthouse/lighthouse-run-2.png)
-![Network Baseline](report/baseline/load/baseline-load-Network.png)
+   ![Baseline Load](report/baseline/load/baseline-load-1.png)
+   ![Lighthouse Baseline](report/baseline/load/lighthouse/lighthouse-run-2.png)
+   ![Network Baseline](report/baseline/load/baseline-load-Network.png)
 
 ---
 
@@ -60,7 +60,7 @@
 * **Докази:** 
 - Скріншот: `report/baseline/search/`
 - Логи: `report/baseline/search/run-1.json`, `run-2.json`, `run-3.json`
-![Performance Search Baseline](report/baseline/search/baseline-search-1.png)
+   ![Performance Search Baseline](report/baseline/search/baseline-search-1.png)
 
 ---
 
@@ -82,8 +82,8 @@
 * **Докази:** 
 - Скріншот: `report/baseline/list/`
 - Логи: `report/baseline/list/run-1.json`, `run-2.json`, `run-3.json`
-![Baseline List Manipulations 1](report/baseline/list/baseline-list-1.png)
-![Baseline List Manipulations 2](report/baseline/list/baseline-list-1(2).png)
+   ![Baseline List Manipulations 1](report/baseline/list/baseline-list-1.png)
+   ![Baseline List Manipulations 2](report/baseline/list/baseline-list-1(2).png)
 
 ---
 
@@ -144,7 +144,7 @@
 
 ### Виправлення 2: Оптимізація завантаження зображень
 
-- **Коміт:** пізніше
+- **Коміт:** 02de3e (perf: optimize image loading + reorganize change01 directory)
 - **Гіпотеза:** Надмірна кількість мережевих запитів і завантаження зображень.
 - **Сценарій:** Початкове завантаження сторінки та подальше прокручування каталогу.
 
@@ -193,3 +193,56 @@
    ![Network after fix 2 (clicked on the 'add more' button which loaded 20 more teachers)](report/change02/network/network-run4_load-20-more-teachers.png)
    ![Lighthouse after fix 2](report/change02/lighthouse/hypothesis2-lighthouse-3.png)
    ![Performance trace after fix 2](report/change02/performance/hypothesis2-run2.png)
+
+### Виправлення 3: Оптимізація пошуку та повторних обчислень
+
+- **Коміт:** пізніше
+- **Гіпотеза:** Тривале виконання операцій під час пошуку.
+- **Сценарій:** Введення пошукового запиту «математика» та очікування оновлення результатів.
+
+**Підтверджена причина:**
+
+До оптимізації під час введення пошукового запиту виконувалася значна кількість синхронних обчислень над каталогом із 2000 репетиторів. Зокрема, повторно оброблялися текстові дані кожного репетитора, виконувалася фільтрація та сортування результатів. Також під час сортування могли повторно обчислюватися рейтингові показники.
+
+Ці операції створювали значне навантаження на головний потік браузера, що призводило до тривалих JavaScript-задач і затримок оновлення інтерфейсу після введення тексту.
+
+**Що змінено у коді:**
+
+1. У `App.jsx` використано `useDeferredValue` для відкладеного оновлення пошукового запиту. Це дозволяє не блокувати введення тексту користувачем через негайне виконання важких обчислень.
+2. У `App.jsx` використано `useMemo` для мемоізації результатів фільтрації, пошуку та сортування. Обчислення повторюються лише тоді, коли змінюються залежності: пошуковий запит, фільтри або спосіб сортування.
+3. У `text.js` додано кешування нормалізованого тексту репетиторів за допомогою `WeakMap`. Це дозволяє не виконувати повторну нормалізацію і формування текстового рядка під час кожного пошукового запиту.
+4. У `text.js` додано збереження останнього нормалізованого пошукового запиту та його окремих слів, щоб не повторювати ці операції для кожного репетитора.
+5. У `rating.js` додано кешування розрахованих рейтингових оцінок за допомогою `WeakMap`, щоб уникнути повторного виконання однакових обчислень під час сортування.
+6. У `Filters.jsx` використано `useMemo` для формування кількості репетиторів за предметами та побудови списку доступних предметів. Це запобігає повторному проходженню всього каталогу під час кожного рендерення компонента.
+
+**Результати вимірювань до оптимізації (після гіпотез 1 і 2):**
+
+| Метрика | Запуск 1 | Запуск 2 | Запуск 3 | Медіана |
+| :--- | :---: | :---: | :---: | :---: |
+| INP (Interaction to Next Paint), мс | 5148 | 4140 | 4961 | **4961** |
+| Найдовша JS-задача під час пошуку, мс | 3593 | 2771 | 3654 | **3593** |
+| Сумарний Blocking Time Long Tasks, мс | 6640 | 5505 | 5532 | **5532** |
+| Кількість Long Tasks | 4 | 4 | 4 | **4** |
+
+**Результати вимірювань після оптимізації:**
+
+| Метрика | Запуск 1 | Запуск 2 | Запуск 3 | Медіана |
+| :--- | :---: | :---: | :---: | :---: |
+| INP (Interaction to Next Paint), мс | 147 | 132 | 121 | **132** |
+| Найдовша JS-задача під час пошуку, мс | 95 | 67 | 101 | **95** |
+| Сумарний Blocking Time Long Tasks, мс | 193 | 175 | 222 | **193** |
+| Кількість Long Tasks | 11 | 7 | 7 | **7** |
+
+**Порівняння результатів до та після оптимізації:**
+
+| Метрика | До (медіана) | Після (медіана) | Зміна |
+| :--- | :---: | :---: | :---: |
+| **INP**, мс | 4961 | 132 | **−97,3%** (покращення) |
+| **Найдовша JS-задача**, мс | 3593 | 95 | **−97,4%** (покращення) |
+| **Сумарний Blocking Time**, мс | 5532 | 193 | **−96,5%** (покращення) |
+| **Кількість Long Tasks** | 4 | 7 | +3 задачі (регресія) |
+
+**Докази:**
+- **Скріншоти до та після оптимізації:**
+   ![Screenshots and Performance Trace before optimization](report/change03/run3-before.png)
+   ![Screenshots and Performance Trace after optimization](report/change03/run3-after.png)

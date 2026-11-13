@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useDeferredValue } from 'react';
 import { tutors } from './data/tutors';
 import { getVisibleTutors } from './utils/catalog';
 import { useReferenceData } from './hooks/useReferenceData';
@@ -21,6 +21,7 @@ export const DEFAULT_FILTERS = {
 
 export default function App() {
   const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [sortBy, setSortBy] = useState('recommended');
   const [selectedId, setSelectedId] = useState(null);
@@ -28,7 +29,14 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const reference = useReferenceData();
 
-  const visible = getVisibleTutors(tutors, { query, filters, sortBy });
+  const visible = useMemo(() => {
+    return getVisibleTutors(tutors, {
+      query: deferredQuery,
+      filters,
+      sortBy,
+    });
+  }, [deferredQuery, filters, sortBy]);
+
   const selected = tutors.find((t) => t.id === selectedId);
 
   const toggleFavorite = (id) => {

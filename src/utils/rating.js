@@ -21,9 +21,20 @@ export function weightedRating(reviews, now = RATING_REFERENCE_DATE) {
   return weights ? weighted / weights : 0;
 }
 
+
+const tutorScoreCache = new WeakMap();
+
 export function tutorScore(tutor) {
+  if (tutorScoreCache.has(tutor)) {
+    return tutorScoreCache.get(tutor);
+  }
+
   const rating = weightedRating(tutor.reviews);
   const confidence = Math.log10(tutor.reviews.length + 1);
   const bonus = (tutor.verified ? 0.25 : 0) + Math.min(tutor.experienceYears, 20) / 100;
-  return rating * confidence + bonus;
+  const score = rating * confidence + bonus;
+
+  tutorScoreCache.set(tutor, score);
+
+  return score;
 }
