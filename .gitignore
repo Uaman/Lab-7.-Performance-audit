@@ -9,3 +9,5 @@ report/**/*.json
 report/*.json
 report/**/*.html
 report/*.html
+report/**/*.har
+report/*.har
