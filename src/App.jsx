@@ -64,6 +64,7 @@ export default function App() {
           ) : (
             <TutorList
               tutors={visible}
+              listKey={`${query}|${JSON.stringify(filters)}|${sortBy}`}
               favorites={favorites}
               selectedId={selectedId}
               onSelect={(id) => setSelectedId(id)}
