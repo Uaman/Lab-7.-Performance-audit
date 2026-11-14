@@ -4,3 +4,10 @@ dist
 .DS_Store
 .vite
 coverage
+
+report/**/*.json
+report/*.json
+report/**/*.html
+report/*.html
+report/**/*.har
+report/*.har
