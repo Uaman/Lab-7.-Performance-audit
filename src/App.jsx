@@ -1,4 +1,4 @@
-import { useState, useMemo, useDeferredValue } from 'react';
+import { useState, useMemo, useDeferredValue, useCallback } from 'react';
 import { tutors } from './data/tutors';
 import { getVisibleTutors } from './utils/catalog';
 import { useReferenceData } from './hooks/useReferenceData';
@@ -39,9 +39,9 @@ export default function App() {
 
   const selected = tutors.find((t) => t.id === selectedId);
 
-  const toggleFavorite = (id) => {
+  const toggleFavorite = useCallback((id) => {
     setFavorites((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  };
+  }, []);
 
   const book = (tutor) => {
     setToast(`Заявку для ${tutor.name} надіслано. Репетитор зв'яжеться з вами найближчим часом.`);
@@ -75,7 +75,7 @@ export default function App() {
               listKey={`${query}|${JSON.stringify(filters)}|${sortBy}`}
               favorites={favorites}
               selectedId={selectedId}
-              onSelect={(id) => setSelectedId(id)}
+              onSelect={setSelectedId}
               onToggleFavorite={toggleFavorite}
               style={{ marginTop: 16 }}
             />
